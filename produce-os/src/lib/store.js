@@ -89,6 +89,7 @@ export async function intakeManualOrder(customerId, cart) {
         description: p ? p.name : '',
         qty: c.qty,
         unit: p ? p.unit : 'each',
+        unit_price: c.price ?? null, // on-the-fly override from the POS cart
         confidence: 1,
       }
     }),
@@ -109,7 +110,8 @@ async function priceItems(customerId, items) {
     description: i.description,
     qty: i.qty,
     unit: i.unit,
-    unit_price: priceFor(i.product_id),
+    // A manually set price wins; otherwise resolve from the customer's list.
+    unit_price: i.unit_price ?? priceFor(i.product_id),
     confidence: i.confidence ?? null,
   }))
 }

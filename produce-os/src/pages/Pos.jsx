@@ -46,11 +46,20 @@ export default function Pos() {
       if (existing) {
         return c.map((x) => (x.product_id === productId ? { ...x, qty: x.qty + 1 } : x))
       }
-      return [...c, { product_id: productId, qty: 1 }]
+      // price: null = use the customer's agreed price; a number = manual override
+      return [...c, { product_id: productId, qty: 1, price: null }]
     })
     setFlash(productId)
     setTimeout(() => setFlash(null), 250)
   }
+
+  function setPrice(productId, value) {
+    const n = value === '' ? null : parseFloat(value)
+    if (n != null && (Number.isNaN(n) || n < 0)) return
+    setCart((c) => c.map((x) => (x.product_id === productId ? { ...x, price: n } : x)))
+  }
+
+  const effectivePrice = (c) => c.price ?? priceFor(c.product_id)
 
   function setQty(productId, qty) {
     setCart((c) =>
@@ -60,7 +69,7 @@ export default function Pos() {
     )
   }
 
-  const total = cart.reduce((sum, c) => sum + (priceFor(c.product_id) ?? 0) * c.qty, 0)
+  const total = cart.reduce((sum, c) => sum + (effectivePrice(c) ?? 0) * c.qty, 0)
 
   async function save(alsoConfirm) {
     if (!customerId || cart.length === 0) return
@@ -124,18 +133,41 @@ export default function Pos() {
             <>
               {cart.map((c) => {
                 const p = productById.get(c.product_id)
-                const price = priceFor(c.product_id)
+                const price = effectivePrice(c)
+                const listPrice = priceFor(c.product_id)
+                const overridden = c.price != null && c.price !== listPrice
                 const short = p && c.qty > p.stock_on_hand
                 return (
                   <div className="pos-line" key={c.product_id}>
                     <div className="pos-line-main">
                       <div>{p?.name}</div>
-                      <div className="muted small">
-                        {money(price)} / {p?.unit}
-                        {short && (
-                          <span style={{ color: 'var(--red)' }}> · only {p.stock_on_hand} left</span>
+                      <div className="muted small pos-price-edit">
+                        $
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.05"
+                          value={c.price ?? listPrice ?? ''}
+                          onChange={(e) => setPrice(c.product_id, e.target.value)}
+                          title="Price for this order — edit to override the customer's agreed price"
+                        />
+                        / {p?.unit}
+                        {overridden && (
+                          <button
+                            type="button"
+                            className="pos-price-reset"
+                            title={`Back to agreed price ${money(listPrice)}`}
+                            onClick={() => setPrice(c.product_id, '')}
+                          >
+                            ↺ {money(listPrice)}
+                          </button>
                         )}
                       </div>
+                      {short && (
+                        <div className="small" style={{ color: 'var(--red)' }}>
+                          only {p.stock_on_hand} left
+                        </div>
+                      )}
                     </div>
                     <div className="pos-stepper">
                       <button type="button" onClick={() => setQty(c.product_id, c.qty - 1)}>−</button>
