@@ -61,6 +61,44 @@ export async function intakeOrder(customerId, rawText) {
   return updated
 }
 
+// Manual (POS) entry: no parsing involved, but the same save-first discipline —
+// the order row is written before its items, so a failure part-way leaves a
+// visible needs_review order rather than nothing.
+export async function intakeManualOrder(customerId, cart) {
+  const products = await db.listProducts()
+  const byId = new Map(products.map((p) => [p.id, p]))
+  const summary = cart
+    .map((c) => {
+      const p = byId.get(c.product_id)
+      return `${c.qty} ${p ? `${p.unit} ${p.name}` : c.product_id}`
+    })
+    .join('\n')
+
+  const order = await db.createOrder({
+    customer_id: customerId,
+    raw_text: `Manual entry (POS):\n${summary}`,
+    status: 'needs_review',
+  })
+
+  const priced = await priceItems(
+    customerId,
+    cart.map((c) => {
+      const p = byId.get(c.product_id)
+      return {
+        product_id: c.product_id,
+        description: p ? p.name : '',
+        qty: c.qty,
+        unit: p ? p.unit : 'each',
+        unit_price: c.price ?? null, // on-the-fly override from the POS cart
+        confidence: 1,
+      }
+    }),
+  )
+  await db.replaceOrderItems(order.id, priced)
+
+  return db.updateOrder(order.id, { status: 'parsed', parse_note: null })
+}
+
 async function priceItems(customerId, items) {
   const [products, customerPrices] = await Promise.all([
     db.listProducts(),
@@ -72,7 +110,8 @@ async function priceItems(customerId, items) {
     description: i.description,
     qty: i.qty,
     unit: i.unit,
-    unit_price: priceFor(i.product_id),
+    // A manually set price wins; otherwise resolve from the customer's list.
+    unit_price: i.unit_price ?? priceFor(i.product_id),
     confidence: i.confidence ?? null,
   }))
 }

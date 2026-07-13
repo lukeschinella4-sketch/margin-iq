@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import Dashboard from './pages/Dashboard'
 import NewOrder from './pages/NewOrder'
+import Pos from './pages/Pos'
 import Customers from './pages/Customers'
 import Products from './pages/Products'
 import OrderDetail from './pages/OrderDetail'
@@ -21,6 +22,7 @@ export default function App() {
         <nav>
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/new">＋ New Order</NavLink>
+          <NavLink to="/pos">🧾 POS Entry</NavLink>
           <NavLink to="/customers">Customers</NavLink>
           <NavLink to="/products">Products &amp; Stock</NavLink>
         </nav>
@@ -33,6 +35,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/new" element={<NewOrder />} />
+          <Route path="/pos" element={<Pos />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/products" element={<Products />} />
           <Route path="/orders/:id" element={<OrderDetail />} />

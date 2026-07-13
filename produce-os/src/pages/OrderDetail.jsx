@@ -258,7 +258,26 @@ export default function OrderDetail() {
                         it.unit
                       )}
                     </td>
-                    <td className="num">{money(it.unit_price)}</td>
+                    <td className="num">
+                      {editable ? (
+                        <input
+                          className="narrow"
+                          type="number"
+                          min="0"
+                          step="0.05"
+                          value={it.unit_price ?? ''}
+                          placeholder="—"
+                          title="Price for this order — edit to override the customer's agreed price"
+                          onChange={(e) =>
+                            editItem(i, {
+                              unit_price: e.target.value === '' ? null : parseFloat(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      ) : (
+                        money(it.unit_price)
+                      )}
+                    </td>
                     <td className="num">{it.unit_price != null ? money(it.qty * it.unit_price) : '—'}</td>
                     {editable && (
                       <td>
